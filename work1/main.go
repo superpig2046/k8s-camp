@@ -3,16 +3,55 @@ package main
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 )
 
-// Health 健康检查默认返回 200
+func init() {
+	// 初始化日志
+	log.SetFormatter(&log.TextFormatter{
+		DisableColors: true,
+	})
+	log.SetOutput(os.Stdout)
+
+	// 设置日志级别
+	log.SetLevel(log.DebugLevel)
+	logLevel, exist := os.LookupEnv("LOG_LEVEL")
+	if exist {
+		switch logLevel {
+		case "debug":
+			log.SetLevel(log.DebugLevel)
+		case "info":
+			log.SetLevel(log.InfoLevel)
+		case "warn":
+			log.SetLevel(log.WarnLevel)
+		case "error":
+			log.SetLevel(log.ErrorLevel)
+		}
+	}
+}
+
+// Health 健康检查默认返回 200， 并且输出服务的环境参数
 func Health(ctx *gin.Context) {
 	ctx.Header("Content-Type", "application/json")
-	ctx.JSON(http.StatusOK, map[string]string{"status": "ok"})
+
+	// 读取环境配置
+	envs := make([]string, 0)
+	for _, k := range []string{"VERSION", "LOG_LEVEL", "GIN_MODE"} {
+		v, exist := os.LookupEnv(k)
+		if exist {
+			envs = append(envs, fmt.Sprintf("%s=%s", k, v))
+		}
+	}
+
+	ctx.JSON(http.StatusOK,
+		map[string]string{
+			"status": "ok",
+			"envs":   strings.Join(envs, ";"),
+		})
 	return
 }
 
@@ -33,6 +72,20 @@ func SetHeaderHandler(ctx *gin.Context) {
 	return
 }
 
+// ExportWithDebugLog 输出一个Debug日志在console
+func ExportWithDebugLog(ctx *gin.Context) {
+	log.Debugf("here is some debug log")
+	ctx.JSON(http.StatusOK, map[string]string{"result": "ok"})
+	return
+}
+
+// ExportWithWarnLog 输出一个Warn日志在console
+func ExportWithWarnLog(ctx *gin.Context) {
+	log.Warnf("here is some debug log")
+	ctx.JSON(http.StatusOK, map[string]string{"result": "ok"})
+	return
+}
+
 // LogMiddleware 修改Gin默认日志输出格式 IP [时间] 耗时 方法+请求路径
 func LogMiddleware() gin.HandlerFunc {
 	return gin.LoggerWithFormatter(func(p gin.LogFormatterParams) string {
@@ -48,11 +101,19 @@ func LogMiddleware() gin.HandlerFunc {
 }
 
 func main() {
+	// 从环境中读取 GIN_MODE 通过 configMap 引入到环境变量
+	ginMode, exist := os.LookupEnv("GIN_MODE")
+	if exist {
+		gin.SetMode(ginMode)
+	}
+
 	router := gin.New()
 	router.Use(LogMiddleware(), gin.Recovery())
 
 	router.GET("/set-header", SetHeaderHandler)
 	router.GET("/healthz", Health)
+	router.GET("/debug-log", ExportWithDebugLog)
+	router.GET("/warn-log", ExportWithWarnLog)
 
 	_ = router.Run(":8888")
 }

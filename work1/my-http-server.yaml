@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-http-server
+  labels:
+    app: my-http-server
+spec:
+  containers:
+    - name: my-http-server
+      image: superpig2046/my-http:1.1
+      livenessProbe:
+        httpGets:
+          path: /healthz
+          port: 8888
+        initialDeplaySeconds: 5
+        timeoutSeconds: 1
+      resources:
+        limits:
+          memory: 500Mi
+        requests:
+          memory: 100Mi
+      qosClass: Burstable
+      env:
+        - name: VERSION
+          value: my-version-1
+        - name: GIN_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: my-http-server-config
+              key: ginMode
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: my-http-server-config
+              key: logLevel
