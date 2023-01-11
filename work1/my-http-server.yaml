@@ -9,7 +9,7 @@ spec:
     - name: my-http-server
       image: superpig2046/my-http:1.1
       livenessProbe:
-        httpGets:
+        httpGet:
           path: /healthz
           port: 8888
         initialDeplaySeconds: 5
