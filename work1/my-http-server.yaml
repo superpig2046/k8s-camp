@@ -12,14 +12,13 @@ spec:
         httpGet:
           path: /healthz
           port: 8888
-        initialDeplaySeconds: 5
+        initialDelaySeconds: 5
         timeoutSeconds: 1
       resources:
         limits:
           memory: 500Mi
         requests:
           memory: 100Mi
-      qosClass: Burstable
       env:
         - name: VERSION
           value: my-version-1
