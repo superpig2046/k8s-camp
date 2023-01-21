@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gateway
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  tls:
+    - hosts:
+        - my-http.com
+      secretName: my-http-tls
+  rules:
+    - host: my-http.com
+      http:
+        paths:
+          - path: "/business"
+            pathType: Prefix
+            backend:
+              service:
+                name: business-service
+                port:
+                  number: 80
+          - path: "/sale"
+            pathType: Prefix
+            backend:
+              service:
+                name: sale-service
+                port:
+                  number: 80

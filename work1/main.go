@@ -114,6 +114,9 @@ func main() {
 	router.GET("/healthz", Health)
 	router.GET("/debug-log", ExportWithDebugLog)
 	router.GET("/warn-log", ExportWithWarnLog)
+	// 一份代码两个入口，通过设置Version环境参数不同
+	router.GET("/business", Health)
+	router.GET("/sale", Health)
 
 	_ = router.Run(":8888")
 }
