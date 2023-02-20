@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
+	"k8s-camp/work1/middleware"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -86,6 +89,13 @@ func ExportWithWarnLog(ctx *gin.Context) {
 	return
 }
 
+// RandomSleep 随机执行
+func RandomSleep(ctx *gin.Context) {
+	time.Sleep(time.Second * time.Duration(rand.Float64()*2))
+	ctx.JSON(http.StatusOK, map[string]string{"result": "ok"})
+	return
+}
+
 // LogMiddleware 修改Gin默认日志输出格式 IP [时间] 耗时 方法+请求路径
 func LogMiddleware() gin.HandlerFunc {
 	return gin.LoggerWithFormatter(func(p gin.LogFormatterParams) string {
@@ -100,6 +110,12 @@ func LogMiddleware() gin.HandlerFunc {
 	})
 }
 
+func Metric(handler http.Handler) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		handler.ServeHTTP(ctx.Writer, ctx.Request)
+	}
+}
+
 func main() {
 	// 从环境中读取 GIN_MODE 通过 configMap 引入到环境变量
 	ginMode, exist := os.LookupEnv("GIN_MODE")
@@ -108,7 +124,7 @@ func main() {
 	}
 
 	router := gin.New()
-	router.Use(LogMiddleware(), gin.Recovery())
+	router.Use(LogMiddleware(), middleware.MetricMiddle(), gin.Recovery())
 
 	router.GET("/set-header", SetHeaderHandler)
 	router.GET("/healthz", Health)
@@ -117,6 +133,14 @@ func main() {
 	// 一份代码两个入口，通过设置Version环境参数不同
 	router.GET("/business", Health)
 	router.GET("/sale", Health)
+
+	// 随机返回
+	router.GET("/random-sleep", RandomSleep)
+
+	// metric
+	router.GET("/metrics", Metric(promhttp.InstrumentMetricHandler(
+		middleware.MetricRegistry, promhttp.HandlerFor(middleware.MetricRegistry, promhttp.HandlerOpts{}),
+	)))
 
 	_ = router.Run(":8888")
 }
